@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 )
 
 type ViaCEP struct {
@@ -31,6 +32,39 @@ func main() {
 	}()
 }
 
+func BuscaCEPHandler(resWriter http.ResponseWriter, req *http.Request) {
+	if req.URL.Path == "/" {
+		resWriter.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	cepParam := req.URL.Query().Get("cep")
+	if cepParam == "" {
+		resWriter.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	validCep := isValidCEP(cepParam)
+
+	if !validCep {
+		resWriter.WriteHeader(http.StatusBadRequest)
+		resWriter.Write([]byte("Cep invalido!"))
+		return
+	}
+
+	result, err := BuscaCEP(cepParam)
+	if err != nil {
+		resWriter.WriteHeader(http.StatusInternalServerError)
+		resWriter.Write([]byte(err.Error()))
+		return
+	}
+
+	resWriter.Header().Set("Content-Type", "application/json")
+	resWriter.WriteHeader(http.StatusOK)
+	json.NewEncoder(resWriter).Encode(result)
+	return
+}
+
 func BuscaCEP(cep string) (*ViaCEP, error) {
 	res, err := http.Get("http://viacep.com.br/ws/" + cep + "/json/")
 	if err != nil {
@@ -49,4 +83,14 @@ func BuscaCEP(cep string) (*ViaCEP, error) {
 		return nil, err
 	}
 	return &viaCEP, nil
+}
+
+func isValidCEP(cep string) bool {
+	cepPattern := regexp.MustCompile(`^\d{5}\d{3}$`)
+
+	if !cepPattern.MatchString(cep) {
+		return false
+	}
+
+	return true
 }
