@@ -22,7 +22,7 @@ type ViaCEP struct {
 }
 
 func main() {
-
+	http.HandleFunc("/", BuscaCEPHandler)
 	func() {
 		println("Servidor rodando na porta 5051!")
 		err := http.ListenAndServe(":5051", nil)
